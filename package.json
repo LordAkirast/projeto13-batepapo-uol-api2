@@ -8,8 +8,6 @@
     "start": "node src/app.js",
     "dev": "node src/app.js"
   },
-  
-  
   "keywords": [],
   "author": "",
   "license": "ISC",
