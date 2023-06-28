@@ -137,15 +137,17 @@ app.get("/participants", (req,res) => {
 
 app.post("/messages", (req,res) => {
 
+    const from = [];
+
     const {to, text, type} = req.body
 
-    const {error} = messageSchema.validate();
+    const {error} = messageSchema.validate(to,text,type);
 
     if (error) {
         return res.status(422).send(error.details[0].message);
     }
 
-    if (type !== "message" || type !== "private_message") {
+    if (type !== "message" && type !== "private_message") {
         return res.status(422).send(error.details[0].message);
     }
 
@@ -153,7 +155,7 @@ app.post("/messages", (req,res) => {
         return res.status(422).send("Participante não encontrado: " + error.details[0].message);
     }
 
-    res.statusCode(201)
+    res.sendStatus(201)
 
 })
 
