@@ -89,14 +89,14 @@ const signUpSchema = Joi.object({
 app.post("/participants", (req,res) => {
     const {name} = req.body
 
-    const { error } = signUpSchema.validate(name);
+    const { error } = signUpSchema.validate({name: name});
 
     if (error) {
         return res.status(422).send(error.details[0].message);
     }
 
     if (participants.find((participant) => participant.name === name)) {
-        return res.status(409).send(error.details[0].message);
+        return res.status(409).send("Participante já existe na sala");
     }
 
     participants.push({
@@ -137,22 +137,22 @@ app.get("/participants", (req,res) => {
 
 app.post("/messages", (req,res) => {
 
-    const from = [];
+    const from = req.headers.user;
 
     const {to, text, type} = req.body
 
-    const {error} = messageSchema.validate(to,text,type);
+    const {error} = messageSchema.validate({to,text,type});
 
     if (error) {
         return res.status(422).send(error.details[0].message);
     }
 
     if (type !== "message" && type !== "private_message") {
-        return res.status(422).send(error.details[0].message);
+        return res.status(422).send("O tipo de mensagem deve ser message ou private_message.");
     }
 
     if (!participants.find((participant) => participant.name === from)) {
-        return res.status(422).send("Participante não encontrado: " + error.details[0].message);
+        return res.status(422).send("Participante não encontrado: ");
     }
 
     res.sendStatus(201)
