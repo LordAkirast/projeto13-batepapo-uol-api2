@@ -145,7 +145,7 @@ app.post("/messages", (req,res) => {
         return res.status(422).send(error.details[0].message);
     }
 
-    if (type !== "message" || "private_message") {
+    if (type !== "message" || type !== "private_message") {
         return res.status(422).send(error.details[0].message);
     }
 
