@@ -206,16 +206,15 @@ app.post("/messages", async (req,res) => {
 
 })
 
-app.get("/messages",async (req,res) => {
-    const promise = await db.collection("messages").find();
-    promise.then(() => { return res.status(200).send(messages)
-
-    }); promise.catch(err => {
-        return res.status(500).send(err.message)
-    })
-
-
-})
+app.get("/messages", async (req, res) => {
+    try {
+      const messages = await db.collection("messages").find().toArray();
+      return res.status(200).send(messages);
+    } catch (err) {
+      return res.status(500).send(err.message);
+    }
+  });
+  
 
 app.post("/status", async (req, res) => {
     const User = req.headers.user;
