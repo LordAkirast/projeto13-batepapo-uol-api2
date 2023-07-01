@@ -211,8 +211,14 @@ app.post("/messages", async (req,res) => {
 })
 
 app.get("/messages", async (req, res) => {
+    let limit = parseInt(req.query.limit)
+
+    if (isNaN(limit)) {
+        limit = 999;
+    }
+
     try {
-      const messages = await db.collection("messages").find().toArray();
+      const messages = await db.collection("messages").find().limit(limit).toArray();
       return res.status(200).send(messages);
     } catch (err) {
       return res.status(500).send(err.message);
