@@ -195,6 +195,7 @@ app.post("/messages", async (req,res) => {
     
 
      const message = { 
+        from: from,
         to: to,
         text: text,
         type: type,
