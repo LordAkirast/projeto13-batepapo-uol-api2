@@ -11,7 +11,7 @@ app.use(express.json())
 dotenv.config();
 
 ///conexão com o banco
-const mongoClient = new MongoClient("mongodb://localhost:27017/dbUol");
+const mongoClient = new MongoClient(process.env.DATABASE_URL);
 let db
 
 mongoClient.connect()
@@ -100,7 +100,7 @@ const signUpSchema = Joi.object({
 
   ////necessário salvar as coisas nas collections
   ///necessário colocar o formato correto ao entrar na sala de horário usando a lib dayjs
-app.post("/participants", (req,res) => {
+app.post("/participants", async (req,res) => {
     const {name} = req.body
     const currentTime = dayjs().format('HH:mm:ss');
 
@@ -110,9 +110,20 @@ app.post("/participants", (req,res) => {
         return res.status(422).send(error.details[0].message);
     }
 
+
+    ///verificação se já existe no banco
     const newParticipant = {name,lastStatus: Date.now()}
 
+    const participant = await db.collection("participants").findOne({ name: newParticipant.name });
+
+    if (participant) {
+        return res.status(409).send("Participante já existe!");
+    }
+
+
+    ///inserir no banco
     const promise = db.collection("participants").insertOne(newParticipant)
+
     promise.then(() => {
         return res.sendStatus(201)
     }); promise.catch(err => {
