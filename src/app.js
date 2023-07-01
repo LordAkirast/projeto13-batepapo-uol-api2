@@ -184,12 +184,15 @@ app.post("/messages", async (req,res) => {
     }
 
      ///verificação se o destinatário existe na sala
-     const participantTo = await db.collection("participants").findOne({ name: to });
+     if (to !== "Todos") {
+        const participantTo = await db.collection("participants").findOne({ name: to });
 
-     if (!participantTo) {
-         return res.status(422).send(`Participante ${to} não encontrado.`)
-         
+        if (!participantTo) {
+            return res.status(422).send(`Participante ${to} não encontrado.`)
+            
+        }
      }
+    
 
      const message = { 
         to: to,
