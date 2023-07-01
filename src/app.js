@@ -1,8 +1,22 @@
 import express from "express"
 import Joi from "joi";
+import {MongoClient} from "mongodb"
+import dotenv from "dotenv"
+import dayjs from "dayjs";
+
+
 
 const app = express()
 app.use(express.json())
+dotenv.config();
+
+///conexão com o banco
+const mongoClient = new MongoClient("mongodb://localhost:27017/dbUol");
+let db
+
+mongoClient.connect()
+.then(() => db = mongoClient.db())
+.catch((err) => console.log(err.message))
 
 ///dotenv
 ///importar coisas do mongo
@@ -88,6 +102,7 @@ const signUpSchema = Joi.object({
   ///necessário colocar o formato correto ao entrar na sala de horário usando a lib dayjs
 app.post("/participants", (req,res) => {
     const {name} = req.body
+    const currentTime = dayjs().format('HH:mm:ss');
 
     const { error } = signUpSchema.validate({name: name});
 
@@ -95,29 +110,41 @@ app.post("/participants", (req,res) => {
         return res.status(422).send(error.details[0].message);
     }
 
-    if (participants.find((participant) => participant.name === name)) {
-        return res.status(409).send("Participante já existe na sala");
-    }
+    const newParticipant = {name,lastStatus: Date.now()}
 
-    participants.push({
-        name: name,
-        lastStatus: Date.now()
+    const promise = db.collection("participants").insertOne(newParticipant)
+    promise.then(() => {
+        return res.sendStatus(201)
+    }); promise.catch(err => {
+        return res.status(500).send(err.message)
     })
 
-    messages.push({  
-    from: name,
-    to: 'Todos',
-    text: 'entra na sala...',
-    type: 'status',
-    time: 'HH:mm:ss'})
+    const statusMessage = { 
+        from: name,
+        to: 'Todos',
+        text: 'entra na sala...',
+        type: 'status',
+        time: currentTime}
 
-    res.sendStatus(201)
+    const promise2 = db.collection("messages").insertOne(statusMessage)
+    promise2.then(() => {
+        return console.log(statusMessage)
+    }); promise2.catch(err => {
+        return res.status(500).send(err.message)
+    })
+ 
 
 
 })
 
 app.get("/participants", (req,res) => {
-    res.send(participants)
+    const participants = db.collection("participants").find().toArray()
+    .then (participants => {
+        return res.send(participants)
+    })
+    .catch(err => {
+        return res.status(500).send(err.message)
+    })
 })
 
 
