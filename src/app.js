@@ -1,6 +1,6 @@
 import express from "express"
 import Joi from "joi";
-import {MongoClient} from "mongodb"
+import {MongoClient, ObjectId} from "mongodb"
 import dotenv from "dotenv"
 import dayjs from "dayjs";
 
@@ -98,8 +98,6 @@ const signUpSchema = Joi.object({
     type:  Joi.string().required()
   });
 
-  ////necessário salvar as coisas nas collections
-  ///necessário colocar o formato correto ao entrar na sala de horário usando a lib dayjs
 app.post("/participants", async (req,res) => {
     const {name} = req.body
     const currentTime = dayjs().format('HH:mm:ss');
@@ -122,14 +120,6 @@ app.post("/participants", async (req,res) => {
 
 
     ///inserir no banco
-    const promise = db.collection("participants").insertOne(newParticipant)
-
-    promise.then(() => {
-        return res.sendStatus(201)
-    }); promise.catch(err => {
-        return res.status(500).send(err.message)
-    })
-
     const statusMessage = { 
         from: name,
         to: 'Todos',
@@ -137,12 +127,22 @@ app.post("/participants", async (req,res) => {
         type: 'status',
         time: currentTime}
 
-    const promise2 = db.collection("messages").insertOne(statusMessage)
-    promise2.then(() => {
-        return console.log(statusMessage)
-    }); promise2.catch(err => {
+    const promise = db.collection("participants").insertOne(newParticipant)
+
+    promise.then(() => {
+    
+        const promise2 = db.collection("messages").insertOne(statusMessage)
+        promise2.then(() => {
+            return res.sendStatus(201) 
+        }); promise2.catch(err => {
+            return res.status(500).send(err.message)
+        })
+
+    }); promise.catch(err => {
         return res.status(500).send(err.message)
     })
+
+    
  
 
 
@@ -158,26 +158,11 @@ app.get("/participants", (req,res) => {
     })
 })
 
-
-///Já o from da mensagem, ou seja, o remetente, não será enviado pelo body. 
-///Será enviado pelo cliente através de um header na requisição chamado User. 
-
-///from é obrigatório e deve ser um participante existente na lista de participantes 
-//(ou seja, que está na sala).
-
-
-///As validações deverão ser feitas com a biblioteca joi, 
-///com exceção da validação de um participante existente na lista de participantes (use as funções do MongoDB para isso).
-
-// - [ ]  Ao salvar essa mensagem, deve ser acrescentado o atributo **time**, contendo a hora atual no formato HH:mm:ss (utilize a biblioteca `dayjs`).
-// - [ ]  Por fim, em caso de sucesso, retornar **status 201**. Não é necessário retornar nenhuma mensagem além do status.
-// - [ ]  Salve a mensagem na collection de nome `messages` com o formato proposto na seção de armazenamento de dados.
-
-app.post("/messages", (req,res) => {
+app.post("/messages", async (req,res) => {
 
     const from = req.headers.user;
-
     const {to, text, type} = req.body
+    const currentTime = dayjs().format('HH:mm:ss');
 
     const {error} = messageSchema.validate({to,text,type});
 
@@ -189,13 +174,106 @@ app.post("/messages", (req,res) => {
         return res.status(422).send("O tipo de mensagem deve ser message ou private_message.");
     }
 
-    if (!participants.find((participant) => participant.name === from)) {
-        return res.status(422).send("Participante não encontrado: ");
+
+    ///verificação se o from existe na sala
+    const participantFrom = await db.collection("participants").findOne({ name: from });
+
+    if (!participantFrom) {
+        return res.status(422).send("Remetente não encontrado.")
+        
     }
 
-    res.sendStatus(201)
+     ///verificação se o destinatário existe na sala
+     const participantTo = await db.collection("participants").findOne({ name: to });
+
+     if (!participantTo) {
+         return res.status(422).send(`Participante ${to} não encontrado.`)
+         
+     }
+
+     const message = { 
+        to: to,
+        text: text,
+        type: type,
+        time: currentTime}
+
+        const promise = db.collection("messages").insertOne(message)
+        promise.then(() => {
+            return res.sendStatus(201) 
+        }); promise.catch(err => {
+            return res.status(500).send(err.message)
+        })
 
 })
+
+app.get("/messages",async (req,res) => {
+    const promise = await db.collection("messages").find();
+    promise.then(() => { return res.status(200).send(messages)
+
+    }); promise.catch(err => {
+        return res.status(500).send(err.message)
+    })
+
+
+})
+
+app.post("/status", async (req, res) => {
+    const User = req.headers.user;
+
+    if (!User) {
+        return res.status(404).send("O campo 'User' precisa ser preenchido no header.")
+    }
+
+    const promise = await db.collection("participants").findOne({name: User})
+
+    if (!promise) {
+        return res.status(422).send("Participante não encontrado.")
+    }
+
+    db.collection("participants").updateOne(
+        { name: User },
+        { $set: { lastStatus: Date.now() } },
+        function (err, result) {
+          if (err) {
+            return res.status(400).send("Erro ao atualizar o documento: " + err)
+          } else {
+            return res.status(200).send("Sucesso ao atualizar o documento!")
+          }
+        }
+      );
+      
+    
+
+
+})
+
+async function logoutInativos() {
+    const now = Date.now();
+    const inativos = await db.collection("participants").find().toArray();
+  
+    for (const participante of inativos) {
+      if (now - participante.lastStatus > 10) {
+        const currentTime = dayjs().format('HH:mm:ss');
+        console.log(participante.name, "foi deletado!");
+        await db.collection("participants").deleteOne({ _id: participante._id });
+
+        const message = {
+                from: participante.name,
+                to: 'Todos',
+                text: 'sai da sala...',
+                type: 'status',
+                time: currentTime
+        }
+
+        await db.collection("messages").insertOne(message)
+        }
+      }
+    }
+  
+  
+  setInterval(logoutInativos, 15000);
+  
+  
 
 
 app.listen(5000, () => console.log("Servidor ligado!"))
