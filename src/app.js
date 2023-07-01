@@ -247,31 +247,31 @@ app.post("/status", async (req, res) => {
 
 })
 
-async function logoutInativos() {
-    const now = Date.now();
-    const inativos = await db.collection("participants").find().toArray();
+// async function logoutInativos() {
+//     const now = Date.now();
+//     const inativos = await db.collection("participants").find().toArray();
   
-    for (const participante of inativos) {
-      if (now - participante.lastStatus > 10) {
-        const currentTime = dayjs().format('HH:mm:ss');
-        console.log(participante.name, "foi deletado!");
-        await db.collection("participants").deleteOne({ _id: participante._id });
+//     for (const participante of inativos) {
+//       if (now - participante.lastStatus > 10) {
+//         const currentTime = dayjs().format('HH:mm:ss');
+//         console.log(participante.name, "foi deletado!");
+//         await db.collection("participants").deleteOne({ _id: participante._id });
 
-        const message = {
-                from: participante.name,
-                to: 'Todos',
-                text: 'sai da sala...',
-                type: 'status',
-                time: currentTime
-        }
+//         const message = {
+//                 from: participante.name,
+//                 to: 'Todos',
+//                 text: 'sai da sala...',
+//                 type: 'status',
+//                 time: currentTime
+//         }
 
-        await db.collection("messages").insertOne(message)
-        }
-      }
-    }
+//         await db.collection("messages").insertOne(message)
+//         }
+//       }
+//     }
   
   
-  setInterval(logoutInativos, 15000);
+//   setInterval(logoutInativos, 15000);
   
   
 
