@@ -212,14 +212,22 @@ app.post("/messages", async (req,res) => {
 
 app.get("/messages", async (req, res) => {
     let limit = parseInt(req.query.limit)
+    const User = req.headers.user
+    console.log(User)
 
-    if (isNaN(limit)) {
-        limit = 999;
+    if (isNaN(limit) || limit < 0) {
+        return res.status(422).send("limit deve ser um número positivo.")
     }
 
     try {
-      const messages = await db.collection("messages").find().limit(limit).toArray();
-      return res.status(200).send(messages);
+      const messages = await db.collection("messages").find({to: "Todos"}).limit(limit).toArray();
+      const privateMessages = await db.collection("messages").find({type: "private_message", to: User}).limit(limit).toArray();
+      const viewableMessages = messages.concat(privateMessages); 
+
+      // Ordenar por tempo (mais recente para o mais antigo)
+    viewableMessages.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+      return res.status(200).send(viewableMessages);
     } catch (err) {
       return res.status(500).send(err.message);
     }
@@ -228,59 +236,70 @@ app.get("/messages", async (req, res) => {
 
 app.post("/status", async (req, res) => {
     const User = req.headers.user;
+    console.log(User)
 
     if (!User) {
+        console.log("deu ruim 1")
         return res.status(404).send("O campo 'User' precisa ser preenchido no header.")
     }
 
-    const promise = await db.collection("participants").findOne({name: User})
-
-    if (!promise) {
-        return res.status(422).send("Participante não encontrado.")
-    }
-
-    db.collection("participants").updateOne(
-        { name: User },
-        { $set: { lastStatus: Date.now() } },
-        function (err, result) {
-          if (err) {
-            return res.status(400).send("Erro ao atualizar o documento: " + err)
-          } else {
-            return res.status(200).send("Sucesso ao atualizar o documento!")
-          }
+   
+    try {
+        console.log("entrou no try")
+        const promise = await db.collection("participants").findOne({ name: User });
+        
+        console.log("passou da promise")
+        if (!promise) {
+            console.log("deu ruim 2")
+          return res.status(422).send("Participante não encontrado.");
         }
-      );
       
-    
-
+        db.collection("participants").updateOne(
+            { name: User },
+            { $set: { lastStatus: Date.now() } }
+          )
+          .then(result => {
+            console.log("Documento atualizado com sucesso:", result);
+            return res.status(200).send("Sucesso ao atualizar o documento!");
+          })
+          .catch(err => {
+            console.log("Erro ao atualizar o documento:", err);
+            return res.status(400).send("Erro ao atualizar o documento: " + err);
+          });
+          
+          
+      } catch (error) {
+        return res.status(500).send(error.message);
+      }
+      
 
 })
 
-// async function logoutInativos() {
-//     const now = Date.now();
-//     const inativos = await db.collection("participants").find().toArray();
+async function logoutInativos() {
+    const now = Date.now();
+    const inativos = await db.collection("participants").find().toArray();
   
-//     for (const participante of inativos) {
-//       if (now - participante.lastStatus > 10) {
-//         const currentTime = dayjs().format('HH:mm:ss');
-//         console.log(participante.name, "foi deletado!");
-//         await db.collection("participants").deleteOne({ _id: participante._id });
+    for (const participante of inativos) {
+      if (now - participante.lastStatus > 10) {
+        const currentTime = dayjs().format('HH:mm:ss');
+        console.log(participante.name, "foi deletado!");
+        await db.collection("participants").deleteOne({ _id: participante._id });
 
-//         const message = {
-//                 from: participante.name,
-//                 to: 'Todos',
-//                 text: 'sai da sala...',
-//                 type: 'status',
-//                 time: currentTime
-//         }
+        const message = {
+                from: participante.name,
+                to: 'Todos',
+                text: 'sai da sala...',
+                type: 'status',
+                time: currentTime
+        }
 
-//         await db.collection("messages").insertOne(message)
-//         }
-//       }
-//     }
+        await db.collection("messages").insertOne(message)
+        }
+      }
+    }
   
   
-//   setInterval(logoutInativos, 15000);
+  setInterval(logoutInativos, 15000);
   
   
 
