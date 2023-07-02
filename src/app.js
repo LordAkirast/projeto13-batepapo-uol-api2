@@ -262,7 +262,7 @@ app.post("/status", async (req, res) => {
           )
           .then(result => {
             console.log("Documento atualizado com sucesso:", result);
-            return res.status(201).send("Sucesso ao atualizar o documento!");
+            return res.status(200).send("Sucesso ao atualizar o documento!");
           })
           .catch(err => {
             console.log("Erro ao atualizar o documento:", err);
