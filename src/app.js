@@ -102,6 +102,12 @@ app.post("/participants", async (req,res) => {
     const {name} = req.body
     const currentTime = dayjs().format('HH:mm:ss');
 
+    const padrao = /<.*?>/g;
+
+    if (name.includes(padrao)) {
+      name = name.replace(padrao,'')
+    }
+
     const { error } = signUpSchema.validate({name: name});
 
     if (error) {
