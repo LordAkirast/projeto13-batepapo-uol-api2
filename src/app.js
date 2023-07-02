@@ -215,14 +215,16 @@ app.get("/messages", async (req, res) => {
     const User = req.headers.user
     console.log(User)
 
-    if (isNaN(limit) || limit < 0) {
+    if (isNaN(limit) || limit <= 0) {
         return res.status(422).send("limit deve ser um número positivo.")
     }
 
     try {
       const messages = await db.collection("messages").find({to: "Todos"}).limit(limit).toArray();
-      const privateMessages = await db.collection("messages").find({type: "private_message", to: User}).limit(limit).toArray();
-      const viewableMessages = messages.concat(privateMessages); 
+      const privateMessagesReceived = await db.collection("messages").find({type: "private_message", to: User}).limit(limit).toArray();
+      const privateMessagesSent = await db.collection("messages").find({type: "private_message", from: User}).limit(limit).toArray();
+      let viewableMessages = messages.concat(privateMessagesReceived); 
+      viewableMessages = viewableMessages.concat(privateMessagesSent); 
 
       // Ordenar por tempo (mais recente para o mais antigo)
     viewableMessages.sort((a, b) => new Date(b.time) - new Date(a.time));
