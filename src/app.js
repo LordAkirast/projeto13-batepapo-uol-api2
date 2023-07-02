@@ -253,7 +253,7 @@ app.post("/status", async (req, res) => {
         console.log("passou da promise")
         if (!promise) {
             console.log("deu ruim 2")
-          return res.status(422).send("Participante não encontrado.");
+          return res.status(404).send("Participante não encontrado.");
         }
       
         db.collection("participants").updateOne(
@@ -262,7 +262,7 @@ app.post("/status", async (req, res) => {
           )
           .then(result => {
             console.log("Documento atualizado com sucesso:", result);
-            return res.status(200).send("Sucesso ao atualizar o documento!");
+            return res.status(201).send("Sucesso ao atualizar o documento!");
           })
           .catch(err => {
             console.log("Erro ao atualizar o documento:", err);
@@ -282,7 +282,7 @@ async function logoutInativos() {
     const inativos = await db.collection("participants").find().toArray();
   
     for (const participante of inativos) {
-      if (now - participante.lastStatus > 10) {
+      if (now - participante.lastStatus > 10000) {
         const currentTime = dayjs().format('HH:mm:ss');
         console.log(participante.name, "foi deletado!");
         await db.collection("participants").deleteOne({ _id: participante._id });
