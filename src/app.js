@@ -104,8 +104,8 @@ app.post("/participants", async (req,res) => {
 
     const padrao = /<.*?>/g;
 
-    if (name.includes(padrao)) {
-      name = name.replace(padrao,'')
+    if (padrao.test(name)) {
+      name = name.replace(padrao, '');
     }
 
     const { error } = signUpSchema.validate({name: name});
